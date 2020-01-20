@@ -30,7 +30,7 @@ window.onload = function () {
             }
 
             boardArray.push(max);
-            if (boardArray.length >= document.body.clientWidth) {
+            if (boardArray.length >= document.body.clientWidth - 100) {
                 boardArray.shift();
             }
 
@@ -88,7 +88,7 @@ const dataToCanvas = filteredData => {
     const newData = [];
 
     for (let i = 0; i < filteredData.length; i++) {
-        newData.push(document.body.clientHeight - (filteredData[i] / 255) * document.body.clientHeight); 
+        newData.push(document.body.clientHeight - (filteredData[i] / 255) * document.body.clientHeight);
     }
 
     return newData;
@@ -106,7 +106,7 @@ const draw = normalizedData => {
     const dpr = window.devicePixelRatio || 1;
     const padding = 20;
 
-    canvas.width = document.body.clientWidth;
+    canvas.width = document.body.clientWidth - 100;
     canvas.height = document.body.clientHeight;
 
     const ctx = canvas.getContext("2d");
@@ -122,6 +122,9 @@ const draw = normalizedData => {
     ctx.moveTo(0, newData[0]);
     for (let i = 0; i < newData.length; i++) {
         ctx.lineTo(i, newData[i]);
+        if (i != 0 && i != newData.length - 2 && normalizedData[i] > normalizedData[i - 1] && normalizedData[i] > normalizedData[i + 1]) {
+            ctx.fillText(Math.round(normalizedData[i]), i, newData[i]);
+        }
     }
     ctx.stroke();
 };

@@ -1,17 +1,48 @@
 <!DOCTYPE html>
-<html lang="en" >
+<html>
+
 <head>
-  <meta charset="UTF-8">
-  <title>HTML 5 Microphone Visualizer</title>
-  <link rel="stylesheet" href="./style.css">
-
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>#1 HTML Login Form</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.3.1/css/all.css"
+    integrity="sha384-mzrmE5qonljUremFsqc01SB46JvROS7bZs3IO2EmfFsd15uHvIt+Y8vEf7N7fWAU" crossorigin="anonymous">
+  <link href="https://fonts.googleapis.com/css?family=Roboto:300,400" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
-<canvas></canvas>
+  <div class="flex">
+    <div class="center_content take_all" id="logo_place">
+      <h1 id="logo">LetsSpeek!</h1>
+    </div>
 
-<h1>Please allow the use of your microphone</h1>
-<!-- partial -->
-  <script  src="./script.js"></script>
+    <div class="flex" id="form_wrapper">
+      <h1 class="take_all">Please choose plan</h1>
+      <div id="plan1" class="plan_btn center_content">
+        <img src="1.svg" width="100"/>
+        Single syllable
+      </div>
+      <div id="plan2" class="plan_btn center_content">
+        <img src="2.svg" width="100"/>
+        Double syllables
+      </div>
+      <div id="plan4" class="plan_btn center_content">
+        <img src="4.svg" width="100"/>
+        4 syllables
+      </div>
+      <div id="plan_speak" class="plan_btn center_content">
+        <img src="speak.svg" width="100"/>
+        Flowing speech
+      </div>
+      <input type="submit" value="Go!" id='input_submit' class='input_field'>
+    </div>
 
+    <canvas id="main_canvas"></canvas>
+  </div>
+
+  <script src=".\script1.js"></script>
 </body>
+
 </html>
