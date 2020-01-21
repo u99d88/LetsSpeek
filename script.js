@@ -1,15 +1,9 @@
 window.onload = function () {
     'use strict';
-    var h = document.getElementsByTagName('h1')[0];
     var boardArray = new Array();
 
     var soundAllowed = function (stream) {
-        //Audio stops listening in FF without // window.persistAudioStream = stream;
-        //https://bugzilla.mozilla.org/show_bug.cgi?id=965483
-        //https://support.mozilla.org/en-US/questions/984179
         window.persistAudioStream = stream;
-        h.innerHTML = 'Thanks';
-        h.setAttribute('style', 'opacity: 0;');
         var audioContent = new AudioContext();
         var audioStream = audioContent.createMediaStreamSource(stream);
         var analyser = audioContent.createAnalyser();
@@ -44,11 +38,6 @@ window.onload = function () {
         console.log(error);
     }
 
-    /*window.navigator = window.navigator || {};
-    /*navigator.getUserMedia =  navigator.getUserMedia       ||
-                              navigator.webkitGetUserMedia ||
-                              navigator.mozGetUserMedia    ||
-                              null;*/
     navigator.getUserMedia({ audio: true }, soundAllowed, soundNotAllowed);
 
 };

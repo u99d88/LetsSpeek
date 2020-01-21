@@ -177,13 +177,6 @@ i {
 }
 
 #main_canvas{
-    background: repeating-linear-gradient(
-    to right,
-    var(--text_color2),
-    var(--bg_color1),
-    var(--text_color2),
-    var(--bg_color1)
-  );
   display: none;
   flex: 1 1 100%;
   height: 100%;
