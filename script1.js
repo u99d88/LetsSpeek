@@ -1,40 +1,41 @@
 var chosen_plan = 1;
-plan1.style.border = '3px solid #002366';
+var totalSamples = 0;
+$("#plan1").addClass("selected_plan");
 
 $("#plan1").click(function () {
     chosen_plan = 1;
 
-    plan1.style.border = '3px solid #002366';
-    plan2.style.border = 'none';
-    plan4.style.border = 'none';
-    plan_speak.style.border = 'none';
+    $("#plan1").addClass("selected_plan");
+    $("#plan2").removeClass("selected_plan");
+    $("#plan4").removeClass("selected_plan");
+    $("#plan_speak").removeClass("selected_plan");
 });
 
 $("#plan2").click(function () {
     chosen_plan = 2;
 
-    plan1.style.border = 'none';
-    plan2.style.border = '3px solid #002366';
-    plan4.style.border = 'none';
-    plan_speak.style.border = 'none';
+    $("#plan1").removeClass("selected_plan");
+    $("#plan2").addClass("selected_plan");
+    $("#plan4").removeClass("selected_plan");
+    $("#plan_speak").removeClass("selected_plan");
 });
 
 $("#plan4").click(function () {
     chosen_plan = 4;
 
-    plan1.style.border = 'none';
-    plan2.style.border = 'none';
-    plan4.style.border = '3px solid #002366';
-    plan_speak.style.border = 'none';
+    $("#plan1").removeClass("selected_plan");
+    $("#plan2").removeClass("selected_plan");
+    $("#plan4").addClass("selected_plan");
+    $("#plan_speak").removeClass("selected_plan");
 });
 
 $("#plan_speak").click(function () {
     chosen_plan = 0;
 
-    plan1.style.border = 'none';
-    plan2.style.border = 'none';
-    plan4.style.border = 'none';
-    plan_speak.style.border = '3px solid #002366';
+    $("#plan1").removeClass("selected_plan");
+    $("#plan2").removeClass("selected_plan");
+    $("#plan4").removeClass("selected_plan");
+    $("#plan_speak").addClass("selected_plan");
 });
 
 $("#input_submit").click(function () {
@@ -43,43 +44,76 @@ $("#input_submit").click(function () {
     start_amp();
 });
 
+var boardArray = new Array();
+var stopped = false;
+var largeInPixel = 1;
+
 var start_amp = function () {
     'use strict';
-    var boardArray = new Array();
-    var totalSamples = 0;
 
+    $("#logo_place").click(function() {
+        if (stopped == true) {
+            stopped = false;
+        }
+        else {
+            stopped = true;
+        }
+    });
     var soundAllowed = function (stream) {
         window.persistAudioStream = stream;
         var audioContent = new AudioContext();
         var audioStream = audioContent.createMediaStreamSource(stream);
+        //var gainNode = audioContent.createGain();
         var analyser = audioContent.createAnalyser();
+      
         audioStream.connect(analyser);
-        analyser.fftSize = 2048;
+        //gainNode.connect(analyser);
+        //gainNode.gain.value = 0.5;
+      
+        analyser.smoothingTimeConstant = 0;
+        analyser.fftSize = 1024;
 
         var frequencyArray = new Uint8Array(analyser.frequencyBinCount);
-        
+      
         var doDraw = function () {
             requestAnimationFrame(doDraw);
             analyser.getByteTimeDomainData(frequencyArray);
 
+            if (stopped) {
+                return;
+            }
+
             var max = 0;
             for (var i = 0; i < frequencyArray.length; i++) {
+
+                if (i <= 28 || i >= 32) {
+                    //continue;
+                }
                 if (max < frequencyArray[i]) {
                     max = frequencyArray[i];
                 }
             }
 
-            totalSamples += 1;
-            if (totalSamples == 60)
-            {
-                totalSamples = 0;
+            if (largeInPixel != 0) {
+                var last_val = boardArray[boardArray.length - 1];
+                var diff = Math.abs(max - last_val);
+                var each_diff = diff / largeInPixel;
+
+                for (let i = 0; i < largeInPixel; i++) {
+                    boardArray.push(last_val + (each_diff * i));
+                }
             }
 
-            boardArray.push([max, totalSamples == 0]);
-            if (boardArray.length >= document.body.clientWidth - 100) {
-                boardArray.shift();
+            boardArray.push(max);
+            
+            if (boardArray.length >= document.body.clientWidth * 0.7) {
+                boardArray.splice(0, 1 + largeInPixel);
+                totalSamples += (1 + largeInPixel);
+                if (totalSamples == (60 * (1 + largeInPixel))) {
+                    totalSamples = 0;
+                }
             }
-
+          
             draw(boardArray);
         }
         doDraw();
@@ -93,32 +127,14 @@ var start_amp = function () {
     navigator.getUserMedia({ audio: true }, soundAllowed, soundNotAllowed);
 }
 
-const filterData = audioBuffer => {
-    const rawData = audioBuffer.getChannelData(0); // We only need to work with one channel of data
-    const samples = 70; // Number of samples we want to have in our final data set
-    const blockSize = Math.floor(rawData.length / samples); // the number of samples in each subdivision
-    const filteredData = [];
-    for (let i = 0; i < samples; i++) {
-        let blockStart = blockSize * i; // the location of the first sample in the block
-        let sum = 0;
-        for (let j = 0; j < blockSize; j++) {
-            sum = sum + Math.abs(rawData[blockStart + j]); // find the sum of all the samples in the block
-        }
-        filteredData.push(sum / blockSize); // divide the sum by the block size to get the average
-    }
-    return filteredData;
-};
-
-const normalizeData = filteredData => {
-    const multiplier = Math.pow(Math.max(...filteredData), -1);
-    return filteredData.map(n => n * multiplier);
-}
-
 const dataToCanvas = filteredData => {
     const newData = [];
 
     for (let i = 0; i < filteredData.length; i++) {
-        newData.push([document.body.clientHeight - (filteredData[i][0] / 255) * document.body.clientHeight, filteredData[i][1]]);
+        //newData.push(document.body.clientHeight - (filteredData[i] / 255) * document.body.clientHeight);
+        var pre = (filteredData[i] - 127) / 128;
+        
+        newData.push(document.body.clientHeight - pre * document.body.clientHeight);
     }
 
     return newData;
@@ -130,28 +146,29 @@ const draw = normalizedData => {
     const dpr = window.devicePixelRatio || 1;
     const padding = 20;
 
-    canvas.width = document.body.clientWidth - 100;
+    canvas.width = document.body.clientWidth;
     canvas.height = document.body.clientHeight;
 
     const ctx = canvas.getContext("2d");
     //ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+    
     newData = dataToCanvas(normalizedData);
 
     ctx.beginPath();
     ctx.lineWidth = 1;
     ctx.strokeStyle = "#65b042";
+
     ctx.moveTo(0, newData[0]);
     for (let i = 0; i < newData.length; i++) {
-        ctx.lineTo(i, newData[i][0]);
+        ctx.lineTo(i, newData[i]);
     }
     ctx.stroke();
 
     ctx.beginPath();
     ctx.lineWidth = 0.5;
     ctx.strokeStyle = "#ffffff";
-    for (let i = 0; i < newData.length; i++) {
-        if (newData[i][1])
+    for (let i = 0; i < canvas.width; i++) {
+        if ((i + totalSamples) % (60 * (1 + largeInPixel)) == 0)
         {
             ctx.moveTo(i, 0);
             ctx.lineTo(i, document.body.clientHeight);
