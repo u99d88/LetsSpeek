@@ -41,7 +41,43 @@ $("#plan_speak").click(function () {
 $("#input_submit").click(function () {
     $("#form_wrapper").hide();
     $("#main_canvas").show();
+    $(".bar_btn").show();
     start_amp();
+});
+
+$("#bar_play_stop_btn").click(function() {
+    if (stopped == true) {
+        stopped = false;
+        $("#bar_plus_btn").removeClass("bar_disabled_btn");
+        $("#bar_minus_btn").removeClass("bar_disabled_btn");
+        $("#bar_play_stop_btn").text("Stop");
+    }
+    else {
+        stopped = true;
+        $("#bar_plus_btn").addClass("bar_disabled_btn");
+        $("#bar_minus_btn").addClass("bar_disabled_btn");
+        $("#bar_play_stop_btn").text("Play");
+    }
+});
+
+$("#bar_plus_btn").click(function() {
+    if (stopped == true) {
+        return;
+    }
+
+    if (largeInPixel < 4) {
+        largeInPixel += 1;
+    }
+});
+
+$("#bar_minus_btn").click(function() {
+    if (stopped == true) {
+        return;
+    }
+
+    if (largeInPixel > 0) {
+        largeInPixel -= 1;
+    }
 });
 
 var boardArray = new Array();
@@ -51,26 +87,15 @@ var largeInPixel = 1;
 var start_amp = function () {
     'use strict';
 
-    $("#logo_place").click(function() {
-        if (stopped == true) {
-            stopped = false;
-        }
-        else {
-            stopped = true;
-        }
-    });
     var soundAllowed = function (stream) {
         window.persistAudioStream = stream;
-        var audioContent = new AudioContext();
-        var audioStream = audioContent.createMediaStreamSource(stream);
-        //var gainNode = audioContent.createGain();
-        var analyser = audioContent.createAnalyser();
+        var audioContext = new AudioContext();
+        var audioStream = audioContext.createMediaStreamSource(stream);
+        var analyser = audioContext.createAnalyser();
       
         audioStream.connect(analyser);
-        //gainNode.connect(analyser);
-        //gainNode.gain.value = 0.5;
       
-        analyser.smoothingTimeConstant = 0;
+        analyser.smoothingTimeConstant = 1;
         analyser.fftSize = 1024;
 
         var frequencyArray = new Uint8Array(analyser.frequencyBinCount);
@@ -85,35 +110,21 @@ var start_amp = function () {
 
             var max = 0;
             for (var i = 0; i < frequencyArray.length; i++) {
-
-                if (i <= 28 || i >= 32) {
-                    //continue;
-                }
                 if (max < frequencyArray[i]) {
                     max = frequencyArray[i];
                 }
             }
 
-            if (largeInPixel != 0) {
-                var last_val = boardArray[boardArray.length - 1];
-                var diff = Math.abs(max - last_val);
-                var each_diff = diff / largeInPixel;
-
-                for (let i = 0; i < largeInPixel; i++) {
-                    boardArray.push(last_val + (each_diff * i));
-                }
-            }
-
             boardArray.push(max);
             
-            if (boardArray.length >= document.body.clientWidth * 0.7) {
-                boardArray.splice(0, 1 + largeInPixel);
-                totalSamples += (1 + largeInPixel);
-                if (totalSamples == (60 * (1 + largeInPixel))) {
+            if (boardArray.length * (largeInPixel + 1) >= document.body.clientWidth * 0.7) {
+                boardArray.shift();
+                totalSamples += 1;
+                if (totalSamples == 60) {
                     totalSamples = 0;
                 }
             }
-          
+            
             draw(boardArray);
         }
         doDraw();
@@ -131,7 +142,6 @@ const dataToCanvas = filteredData => {
     const newData = [];
 
     for (let i = 0; i < filteredData.length; i++) {
-        //newData.push(document.body.clientHeight - (filteredData[i] / 255) * document.body.clientHeight);
         var pre = (filteredData[i] - 127) / 128;
         
         newData.push(document.body.clientHeight - pre * document.body.clientHeight);
@@ -150,7 +160,6 @@ const draw = normalizedData => {
     canvas.height = document.body.clientHeight;
 
     const ctx = canvas.getContext("2d");
-    //ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     newData = dataToCanvas(normalizedData);
 
@@ -160,7 +169,16 @@ const draw = normalizedData => {
 
     ctx.moveTo(0, newData[0]);
     for (let i = 0; i < newData.length; i++) {
-        ctx.lineTo(i, newData[i]);
+        ctx.lineTo(i + largeInPixel * i, newData[i]);
+
+        if (largeInPixel != 0 && (i + 1) < newData.length) {
+            var diff = Math.abs(newData[i] - newData[i + 1]);
+            var each_diff = diff / largeInPixel;
+    
+            for (let j = 0; j < largeInPixel; j++) {
+                ctx.lineTo(i + largeInPixel * i + j + 1, newData[i] + (each_diff * j));
+            }
+        }
     }
     ctx.stroke();
 
@@ -168,11 +186,10 @@ const draw = normalizedData => {
     ctx.lineWidth = 0.5;
     ctx.strokeStyle = "#ffffff";
     for (let i = 0; i < canvas.width; i++) {
-        if ((i + totalSamples) % (60 * (1 + largeInPixel)) == 0)
+        if ((i + (totalSamples * (largeInPixel + 1))) % (60 * (largeInPixel + 1)) == 0)
         {
             ctx.moveTo(i, 0);
             ctx.lineTo(i, document.body.clientHeight);
-
         }
     }
     ctx.stroke();

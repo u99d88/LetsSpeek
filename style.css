@@ -59,6 +59,7 @@ body {
 h1 {
     font-size: 15px;
     text-align: center;
+    display: inline;
 }
 
 span {
@@ -83,6 +84,9 @@ span {
 #logo_place {
     height: 5%;
     background-color: var(--bg_color2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 #logo {
@@ -96,7 +100,44 @@ span {
     font-style: normal;
     font-variant: normal;
     text-transform: none;
-    text-align: center;
+    text-align: left;
+    margin: 20%;
+    flex: 0 0 10%;
+}
+
+
+.bar_btn {
+    display: none;
+    font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+    font-size: 100%;
+    letter-spacing: 1.2px;
+    word-spacing: 1.6px;
+    color: #FFFFFF;
+    font-weight: 700;
+    text-decoration: none;
+    font-style: normal;
+    font-variant: normal;
+    text-transform: none;
+    background: var(--text_color2);
+    padding: 0.3%;
+    border-radius: 0.5rem;
+    margin: 1%;
+    flex: 0 0 5%;
+    transition: background-color,
+        0.5s;
+    cursor: pointer;
+}
+
+.bar_btn:hover {
+    background: var(--text_color1);
+}
+
+.bar_disabled_btn {
+    background: var(--bg_color3);
+}
+
+.bar_disabled_btn:hover {
+    background: var(--bg_color3);
 }
 
 .take_all {
