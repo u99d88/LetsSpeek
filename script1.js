@@ -118,11 +118,12 @@ var start_amp = function () {
             boardArray.push(max);
             
             if (boardArray.length * (largeInPixel + 1) >= document.body.clientWidth * 0.7) {
-                boardArray.shift();
-                totalSamples += 1;
-                if (totalSamples == 60) {
-                    totalSamples = 0;
-                }
+                var prv_size = boardArray.length;
+                boardArray.splice(0, boardArray.length - document.body.clientWidth * 0.7 / (largeInPixel + 1));
+                
+                totalSamples += (prv_size - boardArray.length) % 60;
+                totalSamples = totalSamples % 60;
+                $("#logo").text(totalSamples);
             }
             
             draw(boardArray);
