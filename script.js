@@ -1,14 +1,124 @@
-window.onload = function () {
+var chosen_plan = 1;
+
+$("#plan1").addClass("selected_plan");
+
+$("#plan1").click(function () {
+    chosen_plan = 1;
+
+    $("#plan1").addClass("selected_plan");
+    $("#plan2").removeClass("selected_plan");
+    $("#plan4").removeClass("selected_plan");
+    $("#plan_speak").removeClass("selected_plan");
+});
+
+$("#plan2").click(function () {
+    chosen_plan = 2;
+
+    $("#plan1").removeClass("selected_plan");
+    $("#plan2").addClass("selected_plan");
+    $("#plan4").removeClass("selected_plan");
+    $("#plan_speak").removeClass("selected_plan");
+});
+
+$("#plan4").click(function () {
+    chosen_plan = 4;
+
+    $("#plan1").removeClass("selected_plan");
+    $("#plan2").removeClass("selected_plan");
+    $("#plan4").addClass("selected_plan");
+    $("#plan_speak").removeClass("selected_plan");
+});
+
+$("#plan_speak").click(function () {
+    chosen_plan = 0;
+
+    $("#plan1").removeClass("selected_plan");
+    $("#plan2").removeClass("selected_plan");
+    $("#plan4").removeClass("selected_plan");
+    $("#plan_speak").addClass("selected_plan");
+});
+
+$("#input_submit").click(function () {
+    $("#form_wrapper").hide();
+    $("#main_canvas").show();
+    $(".bar_btn").show();
+    $("#logo").hide();
+
+    start_amp();
+});
+
+var play_stop = function () {
+    if (stopped == true) {
+        stopped = false;
+        $("#bar_plus_btn").removeClass("bar_disabled_btn");
+        $("#bar_minus_btn").removeClass("bar_disabled_btn");
+        $("#bar_clean_btn").removeClass("bar_disabled_btn");
+        $("#bar_play_stop_btn").text("Stop");
+    }
+    else {
+        stopped = true;
+        $("#bar_plus_btn").addClass("bar_disabled_btn");
+        $("#bar_minus_btn").addClass("bar_disabled_btn");
+        $("#bar_clean_btn").addClass("bar_disabled_btn");
+        $("#bar_play_stop_btn").text("Play");
+    }
+};
+
+$("#bar_play_stop_btn").click(play_stop);
+$("#main_canvas").click(play_stop);
+
+$("#bar_plus_btn").click(function () {
+    if (stopped == true) {
+        return;
+    }
+
+    if (largeInPixel < 4) {
+        largeInPixel += 1;
+    }
+});
+
+$("#bar_minus_btn").click(function () {
+    if (stopped == true) {
+        return;
+    }
+
+    if (largeInPixel > 0) {
+        largeInPixel -= 1;
+    }
+});
+
+$("#bar_clean_btn").click(function () {
+    if (stopped == true) {
+        return;
+    }
+
+    boardArray = new Array();
+    totalSamples = 0;
+});
+
+var boardArray = new Array();
+var totalSamples = 0;
+var stopped = false;
+var largeInPixel = 1;
+var lastSampleSum = 0;
+var latencyWarningCount = 0;
+var lastLatencyWarningZero = performance.now();
+var mutedMicCount = 0;
+var lastmutesMicZero = performance.now();
+
+var start_amp = function () {
     'use strict';
-    var boardArray = new Array();
 
     var soundAllowed = function (stream) {
         window.persistAudioStream = stream;
-        var audioContent = new AudioContext();
-        var audioStream = audioContent.createMediaStreamSource(stream);
-        var analyser = audioContent.createAnalyser();
+        var audioContext = new AudioContext();
+        var audioStream = audioContext.createMediaStreamSource(stream);
+        var analyser = audioContext.createAnalyser();
+
         audioStream.connect(analyser);
-        analyser.fftSize = 2048;
+
+        analyser.smoothingTimeConstant = 1;
+        analyser.fftSize = 1024;
 
         var frequencyArray = new Uint8Array(analyser.frequencyBinCount);
 
@@ -16,6 +126,42 @@ window.onload = function () {
             requestAnimationFrame(doDraw);
             analyser.getByteTimeDomainData(frequencyArray);
 
+            if (stopped) {
+                return;
+            }
+
+            // Mute mic warning
+            var allmute = true;
+            for (var i = 0; i < frequencyArray.length; i++) {
+                if (128 != frequencyArray[i]) {
+                    allmute = false;
+                    break;
+                }
+            }
+            if (allmute) {
+                if (performance.now() - lastmutesMicZero > 5000) {
+                    mutedMicCount = 1;
+                    lastmutesMicZero = performance.now();
+                }
+                else {
+                    mutedMicCount += 1;
+                }
+            }
+
+            // Latency warning
+            var currentSampleSum = frequencyArray.reduce((a, b) => a + b, 0);
+            if (!allmute && currentSampleSum == lastSampleSum) {
+                if (performance.now() - lastLatencyWarningZero > 5000) {
+                    latencyWarningCount = 1;
+                    lastLatencyWarningZero = performance.now();
+                }
+                else {
+                    latencyWarningCount += 1;
+                }
+            }
+            lastSampleSum = currentSampleSum;
+
+            // Find max element in sample array
             var max = 0;
             for (var i = 0; i < frequencyArray.length; i++) {
                 if (max < frequencyArray[i]) {
@@ -24,8 +170,13 @@ window.onload = function () {
             }
 
             boardArray.push(max);
-            if (boardArray.length >= document.body.clientWidth - 100) {
-                boardArray.shift();
+
+            if (boardArray.length * (largeInPixel + 1) >= document.body.clientWidth * 0.7) {
+                var prv_size = boardArray.length;
+                boardArray.splice(0, boardArray.length - document.body.clientWidth * 0.7 / (largeInPixel + 1));
+
+                totalSamples += (prv_size - boardArray.length) % 60;
+                totalSamples = totalSamples % 60;
             }
 
             draw(boardArray);
@@ -34,106 +185,125 @@ window.onload = function () {
     }
 
     var soundNotAllowed = function (error) {
-        h.innerHTML = 'You must allow your microphone.';
+        alert('Please check your microphone connectivity and allow this site to access it');
         console.log(error);
     }
 
+    navigator.getUserMedia = (navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia);
     navigator.getUserMedia({ audio: true }, soundAllowed, soundNotAllowed);
-
-};
-
-/**
- * Filters the AudioBuffer retrieved from an external source
- * @param {AudioBuffer} audioBuffer the AudioBuffer from drawAudio()
- * @returns {Array} an array of floating point numbers
- */
-const filterData = audioBuffer => {
-    const rawData = audioBuffer.getChannelData(0); // We only need to work with one channel of data
-    const samples = 70; // Number of samples we want to have in our final data set
-    const blockSize = Math.floor(rawData.length / samples); // the number of samples in each subdivision
-    const filteredData = [];
-    for (let i = 0; i < samples; i++) {
-        let blockStart = blockSize * i; // the location of the first sample in the block
-        let sum = 0;
-        for (let j = 0; j < blockSize; j++) {
-            sum = sum + Math.abs(rawData[blockStart + j]); // find the sum of all the samples in the block
-        }
-        filteredData.push(sum / blockSize); // divide the sum by the block size to get the average
-    }
-    return filteredData;
-};
-
-/**
- * Normalizes the audio data to make a cleaner illustration 
- * @param {Array} filteredData the data from filterData()
- * @returns {Array} an normalized array of floating point numbers
- */
-const normalizeData = filteredData => {
-    const multiplier = Math.pow(Math.max(...filteredData), -1);
-    return filteredData.map(n => n * multiplier);
 }
 
 const dataToCanvas = filteredData => {
     const newData = [];
 
     for (let i = 0; i < filteredData.length; i++) {
-        newData.push(document.body.clientHeight - (filteredData[i] / 255) * document.body.clientHeight);
+        var pre = (filteredData[i] - 127) / 128;
+
+        newData.push(document.body.clientHeight - pre * document.body.clientHeight);
     }
 
     return newData;
 }
 
-
-/**
- * Draws the audio file into a canvas element.
- * @param {Array} normalizedData The filtered array returned from filterData()
- * @returns {Array} a normalized array of data
- */
 const draw = normalizedData => {
     // set up the canvas
     const canvas = document.querySelector("canvas");
     const dpr = window.devicePixelRatio || 1;
     const padding = 20;
 
-    canvas.width = document.body.clientWidth - 100;
+    canvas.width = document.body.clientWidth;
     canvas.height = document.body.clientHeight;
 
     const ctx = canvas.getContext("2d");
-    //ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    //normalizedData --> 128 - 255
     newData = dataToCanvas(normalizedData);
 
+    ctx.beginPath();
     ctx.lineWidth = 1;
     ctx.strokeStyle = "#65b042";
-    ctx.beginPath();
-    //ctx.moveTo(0,canvas.height);
-    //ctx.lineTo(canvas.width,canvas.height);
+
     ctx.moveTo(0, newData[0]);
+    var lastPoint = [0, newData[0]];
+    var redCount = 0;
     for (let i = 0; i < newData.length; i++) {
-        ctx.lineTo(i, newData[i]);
-        if (i != 0 && i != newData.length - 2 && normalizedData[i] > normalizedData[i - 1] && normalizedData[i] > normalizedData[i + 1]) {
-            ctx.fillText(Math.round(normalizedData[i]), i, newData[i]);
+        // Check red
+        if (normalizedData[i] < 130 && i + 9 < normalizedData.length) {
+            var total = 0;
+            for (var j = i; j < i + 10; j++) {
+                total += normalizedData[j] - 127;
+            }
+            var avg = total / 10;
+            if (avg > 8) {
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(lastPoint[0], lastPoint[1]);
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = "red";
+                redCount = 10;
+            }
+        }
+
+        ctx.lineTo(i + largeInPixel * i, newData[i]);
+        lastPoint = [i + largeInPixel * i, newData[i]];
+
+        if (largeInPixel != 0 && (i + 1) < newData.length) {
+            var diff = Math.abs(newData[i] - newData[i + 1]);
+            var each_diff = diff / largeInPixel;
+
+            for (let j = 0; j < largeInPixel; j++) {
+                ctx.lineTo(i + largeInPixel * i + j + 1, newData[i] + (each_diff * j));
+                lastPoint = [i + largeInPixel * i + j + 1, newData[i] + (each_diff * j)];
+            }
+        }
+
+        if (redCount > 0) {
+            redCount -= 1;
+
+            if (redCount <= 0) {
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(lastPoint[0], lastPoint[1]);
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = "#65b042";
+            }
         }
     }
     ctx.stroke();
-};
 
-/**
- * A utility function for drawing our line segments
- * @param {AudioContext} ctx the audio context 
- * @param {number} x  the x coordinate of the beginning of the line segment
- * @param {number} height the desired height of the line segment
- * @param {number} width the desired width of the line segment
- * @param {boolean} isEven whether or not the segmented is even-numbered
- */
-const drawLineSegment = (ctx, x, height, width, isEven) => {
-    ctx.lineWidth = 1; // how thick the line is
-    ctx.strokeStyle = "#444"; // what color our line is
     ctx.beginPath();
-    height = isEven ? height : -height;
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, height);
-    ctx.arc(x + width / 2, height, width / 2, Math.PI, 0, isEven);
-    ctx.lineTo(x + width, 0);
+    ctx.lineWidth = 0.5;
+    ctx.strokeStyle = "#ffffff";
+    for (let i = 0; i < canvas.width; i++) {
+        if ((i + (totalSamples * (largeInPixel + 1))) % (60 * (largeInPixel + 1)) == 0) {
+            ctx.moveTo(i, 0);
+            ctx.lineTo(i, document.body.clientHeight - 5);
+        }
+    }
     ctx.stroke();
+
+    // Logo
+    ctx.font = "20px Palatino Linotype Sans MS";
+    ctx.fillStyle = "white";
+    ctx.globalAlpha = 0.2;
+    ctx.fillText("SpeakApp!", 10, 30);
+
+    // Microphone muted warning
+    if (mutedMicCount > 50) {
+        ctx.font = "20px Palatino Linotype Sans MS";
+        ctx.fillStyle = "Yellow";
+        ctx.globalAlpha = 0.5;
+        ctx.textAlign = "center";
+        ctx.fillText("Warning: Microphone muted", canvas.width / 2, 30);
+    }
+    else {
+        // High microphone latency warning
+        if (latencyWarningCount > 50) {
+            ctx.font = "20px Palatino Linotype Sans MS";
+            ctx.fillStyle = "Yellow";
+            ctx.globalAlpha = 0.5;
+            ctx.textAlign = "center";
+            ctx.fillText("Warning: Your device have high latency", canvas.width / 2, 30);
+        }
+    }
 };
