@@ -44,28 +44,37 @@ $("#input_submit").click(function () {
     $(".bar_btn").show();
     $("#logo").hide();
 
+    if (window.matchMedia("only screen and (max-width: 760px)").matches) {
+        document.body.requestFullscreen();
+    }
+
     start_amp();
 });
 
 var play_stop = function () {
     if (stopped == true) {
-        stopped = false;
         $("#bar_plus_btn").removeClass("bar_disabled_btn");
         $("#bar_minus_btn").removeClass("bar_disabled_btn");
         $("#bar_clean_btn").removeClass("bar_disabled_btn");
         $("#bar_play_stop_btn").text("Stop");
     }
     else {
-        stopped = true;
         $("#bar_plus_btn").addClass("bar_disabled_btn");
         $("#bar_minus_btn").addClass("bar_disabled_btn");
         $("#bar_clean_btn").addClass("bar_disabled_btn");
         $("#bar_play_stop_btn").text("Play");
     }
+
+    stopped = !stopped;
 };
 
 $("#bar_play_stop_btn").click(play_stop);
 $("#main_canvas").click(play_stop);
+document.body.onkeyup = function (e) {
+    if (e.keyCode == 32) {
+        play_stop();
+    }
+}
 
 $("#bar_plus_btn").click(function () {
     if (stopped == true) {
@@ -103,21 +112,22 @@ var largeInPixel = 1;
 var lastSampleSum = 0;
 var latencyWarningCount = 0;
 var lastLatencyWarningZero = performance.now();
-var mutedMicCount = 0;
-var lastmutesMicZero = performance.now();
 
 var start_amp = function () {
     'use strict';
 
     var soundAllowed = function (stream) {
         window.persistAudioStream = stream;
-        var audioContext = new AudioContext();
+        var audioContext = new AudioContext({
+            latencyHint: "interactive",
+            sampleRate: 60000
+        });
         var audioStream = audioContext.createMediaStreamSource(stream);
         var analyser = audioContext.createAnalyser();
 
         audioStream.connect(analyser);
 
-        analyser.smoothingTimeConstant = 1;
+        analyser.smoothingTimeConstant = 0;
         analyser.fftSize = 1024;
 
         var frequencyArray = new Uint8Array(analyser.frequencyBinCount);
@@ -133,18 +143,9 @@ var start_amp = function () {
             // Mute mic warning
             var allmute = true;
             for (var i = 0; i < frequencyArray.length; i++) {
-                if (128 != frequencyArray[i]) {
+                if (128 != frequencyArray[i] && 127 != frequencyArray[i]) {
                     allmute = false;
                     break;
-                }
-            }
-            if (allmute) {
-                if (performance.now() - lastmutesMicZero > 5000) {
-                    mutedMicCount = 1;
-                    lastmutesMicZero = performance.now();
-                }
-                else {
-                    mutedMicCount += 1;
                 }
             }
 
@@ -220,15 +221,26 @@ const draw = normalizedData => {
     newData = dataToCanvas(normalizedData);
 
     ctx.beginPath();
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 2;
     ctx.strokeStyle = "#65b042";
 
     ctx.moveTo(0, newData[0]);
+
     var lastPoint = [0, newData[0]];
-    var redCount = 0;
+    var redLine = false;
+    var blueLine = false;
+    var endOfBlueLine = 0;
+    var ClimbeTooFastMaxValue = 0;
+    var tmpp = false;
+
     for (let i = 0; i < newData.length; i++) {
+        // Check sample error
+        if (normalizedData[i] >= 130 && i + 1 < newData.length && normalizedData[i] == normalizedData[i + 1]) {
+            //continue;
+        }
+
         // Check red
-        if (normalizedData[i] < 130 && i + 9 < normalizedData.length) {
+        if (false && !redLine && normalizedData[i] < 130 && i + 9 < normalizedData.length) {
             var total = 0;
             for (var j = i; j < i + 10; j++) {
                 total += normalizedData[j] - 127;
@@ -238,13 +250,59 @@ const draw = normalizedData => {
                 ctx.stroke();
                 ctx.beginPath();
                 ctx.moveTo(lastPoint[0], lastPoint[1]);
-                ctx.lineWidth = 1;
+                ctx.lineWidth = 2;
                 ctx.strokeStyle = "red";
-                redCount = 10;
+                redLine = true;
+            }
+        }
+
+        // Check blue
+        if (!blueLine && normalizedData[i] < 130 && i + 9 < normalizedData.length && normalizedData[i + 9] > 130) {
+            var endOfMountain = i;
+            var maxOfMountain = normalizedData[i];
+            var isMountain = false;
+            for (var j = i; j < normalizedData.length; j++) {
+                if (maxOfMountain < normalizedData[j]) {
+                    maxOfMountain = normalizedData[j];
+                }
+
+                if (normalizedData[j] > 140) {
+                    isMountain = true;
+                }
+
+                if (j > i + 9 && normalizedData[j] < 130) {
+                    endOfMountain = j;
+                    break;
+                }
+            }
+
+            if (isMountain && endOfBlueLine != i) {
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(lastPoint[0], lastPoint[1]);
+                ctx.lineWidth = 2;
+
+                if (tmpp) {
+                    ctx.strokeStyle = "blue";
+                    tmpp = !tmpp;
+                } else {
+                    ctx.strokeStyle = "orange";
+                    tmpp = !tmpp;
+                }
+
+                blueLine = true;
+                redLine = false;
+                endOfBlueLine = endOfMountain;
+                console.log("start mountain at " + i + " until " + endOfBlueLine);
             }
         }
 
         ctx.lineTo(i + largeInPixel * i, newData[i]);
+
+        //ctx.font = "10px Palatino Linotype Sans MS";
+        //ctx.fillStyle = "white";
+        //ctx.fillText(i, i + largeInPixel * i, newData[i]);
+
         lastPoint = [i + largeInPixel * i, newData[i]];
 
         if (largeInPixel != 0 && (i + 1) < newData.length) {
@@ -257,16 +315,32 @@ const draw = normalizedData => {
             }
         }
 
-        if (redCount > 0) {
-            redCount -= 1;
+        if (redLine) {
+            if (ClimbeTooFastMaxValue < normalizedData[i]) {
+                ClimbeTooFastMaxValue = normalizedData[i];
+            }
 
-            if (redCount <= 0) {
+            if (normalizedData[i] > 160 || normalizedData[i] + 5 < ClimbeTooFastMaxValue || normalizedData[i] < 128) {
+                redLine = 0;
+                ClimbeTooFastMaxValue = 0;
+
                 ctx.stroke();
                 ctx.beginPath();
                 ctx.moveTo(lastPoint[0], lastPoint[1]);
-                ctx.lineWidth = 1;
+                ctx.lineWidth = 2;
                 ctx.strokeStyle = "#65b042";
             }
+        }
+
+        if (blueLine && i == endOfBlueLine) {
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(lastPoint[0], lastPoint[1]);
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = "#65b042";
+
+            blueLine = false;
+            endOfBlueLine = 0;
         }
     }
     ctx.stroke();
@@ -288,22 +362,12 @@ const draw = normalizedData => {
     ctx.globalAlpha = 0.2;
     ctx.fillText("SpeakApp!", 10, 30);
 
-    // Microphone muted warning
-    if (mutedMicCount > 50) {
+    // High microphone latency warning
+    if (latencyWarningCount > 50) {
         ctx.font = "20px Palatino Linotype Sans MS";
         ctx.fillStyle = "Yellow";
-        ctx.globalAlpha = 0.5;
+        ctx.globalAlpha = 1;
         ctx.textAlign = "center";
-        ctx.fillText("Warning: Microphone muted", canvas.width / 2, 30);
-    }
-    else {
-        // High microphone latency warning
-        if (latencyWarningCount > 50) {
-            ctx.font = "20px Palatino Linotype Sans MS";
-            ctx.fillStyle = "Yellow";
-            ctx.globalAlpha = 0.5;
-            ctx.textAlign = "center";
-            ctx.fillText("Warning: Your device have high latency", canvas.width / 2, 30);
-        }
+        ctx.fillText("Warning: Your device have high latency", canvas.width / 2, 30);
     }
 };
