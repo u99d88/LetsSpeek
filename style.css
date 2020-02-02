@@ -148,7 +148,7 @@ span {
     flex: 0 0 20%;
     background-color: var(--input_bg);
     margin: 3%;
-    padding: auto auto;
+    padding: 10px;
     border-radius: 30px;
 }
 

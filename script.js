@@ -106,6 +106,8 @@ $("#bar_clean_btn").click(function () {
 });
 
 var boardArray = new Array();
+var boardArray2 = new Array();
+var boardArray3 = new Array();
 var totalSamples = 0;
 var stopped = false;
 var largeInPixel = 1;
@@ -129,12 +131,40 @@ var start_amp = function () {
 
         analyser.smoothingTimeConstant = 0;
         analyser.fftSize = 1024;
+        //2
+        var audioContext2 = new AudioContext({
+            latencyHint: "interactive",
+            sampleRate: 60000
+        });
+        var audioStream2 = audioContext2.createMediaStreamSource(stream);
+        var analyser2 = audioContext2.createAnalyser();
+
+        audioStream2.connect(analyser2);
+
+        analyser2.smoothingTimeConstant = 0;
+        analyser2.fftSize = 1024;
+        //3
+        var audioContext3 = new AudioContext({
+            latencyHint: "interactive",
+            sampleRate: 60000
+        });
+        var audioStream3 = audioContext3.createMediaStreamSource(stream);
+        var analyser3 = audioContext3.createAnalyser();
+
+        audioStream3.connect(analyser3);
+
+        analyser3.smoothingTimeConstant = 0;
+        analyser3.fftSize = 1024;
 
         var frequencyArray = new Uint8Array(analyser.frequencyBinCount);
+        var frequencyArray2 = new Uint8Array(analyser2.frequencyBinCount);
+        var frequencyArray3 = new Uint8Array(analyser3.frequencyBinCount);
 
         var doDraw = function () {
             requestAnimationFrame(doDraw);
             analyser.getByteTimeDomainData(frequencyArray);
+            analyser2.getByteTimeDomainData(frequencyArray2);
+            analyser3.getByteTimeDomainData(frequencyArray3);
 
             if (stopped) {
                 return;
@@ -170,7 +200,21 @@ var start_amp = function () {
                 }
             }
 
-            boardArray.push(max);
+            var max2 = 0;
+            for (var i = 0; i < frequencyArray2.length; i++) {
+                if (max2 < frequencyArray2[i]) {
+                    max2 = frequencyArray2[i];
+                }
+            }
+
+            var max3 = 0;
+            for (var i = 0; i < frequencyArray3.length; i++) {
+                if (max3 < frequencyArray3[i]) {
+                    max3 = frequencyArray3[i];
+                }
+            }
+
+            boardArray.push((max + max2 + max3) / 3);
 
             if (boardArray.length * (largeInPixel + 1) >= document.body.clientWidth * 0.7) {
                 var prv_size = boardArray.length;
@@ -199,6 +243,7 @@ const dataToCanvas = filteredData => {
 
     for (let i = 0; i < filteredData.length; i++) {
         var pre = (filteredData[i] - 127) / 128;
+        //pre = filteredData[i] / 255;
 
         newData.push(document.body.clientHeight - pre * document.body.clientHeight);
     }
@@ -209,8 +254,6 @@ const dataToCanvas = filteredData => {
 const draw = normalizedData => {
     // set up the canvas
     const canvas = document.querySelector("canvas");
-    const dpr = window.devicePixelRatio || 1;
-    const padding = 20;
 
     canvas.width = document.body.clientWidth;
     canvas.height = document.body.clientHeight;
@@ -231,7 +274,6 @@ const draw = normalizedData => {
     var blueLine = false;
     var endOfBlueLine = 0;
     var ClimbeTooFastMaxValue = 0;
-    var tmpp = false;
 
     for (let i = 0; i < newData.length; i++) {
         // Check sample error
@@ -281,19 +323,10 @@ const draw = normalizedData => {
                 ctx.beginPath();
                 ctx.moveTo(lastPoint[0], lastPoint[1]);
                 ctx.lineWidth = 2;
-
-                if (tmpp) {
-                    ctx.strokeStyle = "blue";
-                    tmpp = !tmpp;
-                } else {
-                    ctx.strokeStyle = "orange";
-                    tmpp = !tmpp;
-                }
-
+                ctx.strokeStyle = "blue";
                 blueLine = true;
                 redLine = false;
                 endOfBlueLine = endOfMountain;
-                console.log("start mountain at " + i + " until " + endOfBlueLine);
             }
         }
 
@@ -332,15 +365,17 @@ const draw = normalizedData => {
             }
         }
 
-        if (blueLine && i == endOfBlueLine) {
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(lastPoint[0], lastPoint[1]);
-            ctx.lineWidth = 2;
-            ctx.strokeStyle = "#65b042";
+        if (blueLine) {
+            if (i == endOfBlueLine) {
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(lastPoint[0], lastPoint[1]);
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = "#65b042";
 
-            blueLine = false;
-            endOfBlueLine = 0;
+                blueLine = false;
+                endOfBlueLine = 0;
+            }
         }
     }
     ctx.stroke();

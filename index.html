@@ -2,6 +2,16 @@
 <html>
 
 <head>
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=UA-157579280-1"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+
+    gtag('config', 'UA-157579280-1');
+  </script>
+
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="mobile-web-app-capable" content="yes">
@@ -27,20 +37,20 @@
     <div class="flex" id="form_wrapper">
       <h1 class="take_all">Please choose a plan</h1>
       <div id="plan1" class="plan_btn center_content">
-        <img src="1.svg" width="100"/>
-        Single syllable
+        <img src="1wave.png" width="100" />
+        <!-- Single syllable -->
       </div>
       <div id="plan2" class="plan_btn center_content">
-        <img src="2.svg" width="100"/>
-        Double syllables
+        <img src="2waves.png" width="100" />
+        <!-- Double syllables -->
       </div>
       <div id="plan4" class="plan_btn center_content">
-        <img src="4.svg" width="100"/>
-        4 syllables
+        <img src="4waves.png" width="100" />
+        <!-- 4 syllables -->
       </div>
       <div id="plan_speak" class="plan_btn center_content">
-        <img src="speak.svg" width="100"/>
-        Flowing speech
+        <img src="auto.svg" width="100" />
+        <!-- Flowing speech -->
       </div>
       <input type="submit" value="Go!" id='input_submit' class='input_field'>
     </div>
