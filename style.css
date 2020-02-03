@@ -4,7 +4,6 @@
     --bg_color3: #6b6e70;
     --text_color1: #61892f;
     --text_color2: #86c232;
-
     --form_bg: #ffffff;
     --input_bg: #E5E5E5;
     --input_hover: #eaeaea;
@@ -16,31 +15,27 @@
 * {
     padding: 0;
     margin: 0;
-    box-sizing: border-box;
 }
 
 body {
-    /* make the body full height*/
     height: 100vh;
-    /* set our custom font */
-    font-family: 'Roboto', sans-serif;
-    /* create a linear gradient*/
+    font-family: 'Alef', sans-serif;
     background-color: var(--bg_color1);
     display: flex;
 }
 
 @keyframes cssMasterClassAnimation {
     from {
-      opacity: 0;
+        opacity: 0;
     }
-
     to {
-      opacity: 1;
-   }
+        opacity: 1;
+    }
 }
 
 #form_wrapper {
-    width: 80%;
+    align-self: flex-start;
+    flex: 0 1 90%;
     margin: 5% auto;
     background-color: white;
     border-radius: 50px;
@@ -51,9 +46,25 @@ body {
     animation-name: cssMasterClassAnimation;
     animation-duration: 3s;
     animation-iteration-count: 1;
-    transition : transform 1.5s ease;
+    transition: transform 1.5s ease;
     align-items: center;
     justify-content: center;
+}
+
+#about {
+    align-self: flex-start;
+    flex: 0 1 70%;
+    margin: 5% auto;
+    background-color: white;
+    border-radius: 10px;
+    border: 5px solid var(--text_color2);
+    padding: 5vh 5vh;
+    display: none;
+    flex-wrap: wrap;
+    animation-name: cssMasterClassAnimation;
+    animation-duration: 3s;
+    animation-iteration-count: 1;
+    transition: transform 1.5s ease;
 }
 
 h1 {
@@ -77,19 +88,51 @@ span {
 
 .flex {
     display: flex;
-    flex-wrap : wrap;
+    flex-wrap: wrap;
     width: 100%;
 }
 
-#logo_place {
-    height: 5%;
-    background-color: var(--bg_color2);
-    display: flex;
+.center_flex {
     align-items: center;
     justify-content: center;
 }
 
+#logo_place {
+    align-self: flex-start;
+    margin: 0px;
+    flex: 1 0 5%;
+    background-color: var(--bg_color2);
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+    grid-template-rows: 1fr;
+}
+
+#en_lang {
+    width: 30px;
+    margin: 10px;
+    border-radius: 10px;
+}
+
+#he_lang {
+    width: 30px;
+    margin: 10px;
+    border-radius: 10px;
+}
+
+#langs {
+    grid-area: 1 / 6 / 2 / 7;
+}
+
+#info {
+    width: 30px;
+    margin: 10px;
+    border-radius: 10px;
+    grid-area: 1 / 1 / 2 / 2;
+}
+
 #logo {
+    grid-area: 1 / 3 / 2 / 4;
+    margin-top: 2vh;
     font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
     font-size: 19px;
     letter-spacing: 1.2px;
@@ -100,19 +143,21 @@ span {
     font-style: normal;
     font-variant: normal;
     text-transform: none;
-    text-align: left;
-    flex: 0 0 10%;
+    padding-left: 9vw;
 }
 
+#choose_plan_txt {
+    font-family: 'Alef', sans-serif;
+}
 
 .bar_btn {
     display: none;
-    font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+    font-family: 'Alef', sans-serif;
     font-size: 100%;
     letter-spacing: 1.2px;
     word-spacing: 1.6px;
     color: #FFFFFF;
-    font-weight: 700;
+    font-weight: 50;
     text-decoration: none;
     font-style: normal;
     font-variant: normal;
@@ -122,8 +167,7 @@ span {
     border-radius: 0.5rem;
     margin: 1%;
     flex: 1 0 5%;
-    transition: background-color,
-        0.5s;
+    transition: background-color, 0.5s;
     cursor: pointer;
     user-select: none;
 }
@@ -145,7 +189,7 @@ span {
 }
 
 .plan_btn {
-    flex: 0 0 20%;
+    flex: 1 1 10%;
     background-color: var(--input_bg);
     margin: 3%;
     padding: 10px;
@@ -157,9 +201,9 @@ span {
 }
 
 .selected_plan {
-    -webkit-box-shadow:inset 0px 0px 0px 2px var(--text_color2);
-    -moz-box-shadow:inset 0px 0px 0px 2px var(--text_color2);
-    box-shadow:inset 0px 0px 0px 2px var(--text_color2);
+    -webkit-box-shadow: inset 0px 0px 0px 2px var(--text_color2);
+    -moz-box-shadow: inset 0px 0px 0px 2px var(--text_color2);
+    box-shadow: inset 0px 0px 0px 2px var(--text_color2);
 }
 
 #input_submit {
@@ -167,6 +211,7 @@ span {
     height: 60px;
     border-radius: 30px;
     width: 100%;
+    font-family: 'Alef', sans-serif;
 }
 
 .input_field {
@@ -180,8 +225,7 @@ span {
     padding-left: 30px;
 }
 
-.input_field:hover,
-.input_field:focus {
+.input_field:hover, .input_field:focus {
     /* remove the outline */
     outline: none;
 }
@@ -198,12 +242,12 @@ span {
 #input_submit:hover {
     background-color: var(--text_color1);
     /* simple color transition on hover */
-    transition: background-color,
-        1s;
+    transition: background-color, 1s;
     cursor: pointer;
 }
 
 /* shift it a bit lower */
+
 #create_account {
     display: block;
     position: relative;
@@ -225,8 +269,8 @@ i {
     color: var(--icon_color);
 }
 
-#main_canvas{
-  display: none;
-  flex: 1 1 100%;
-  height: 90%;
+#main_canvas {
+    display: none;
+    flex: 1 1 100%;
+    height: 90%;
 }

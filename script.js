@@ -1,6 +1,118 @@
 var chosen_plan = 1;
+var lang = "he";
+
+function lang_choosePlan() {
+    if (lang == "he") {
+        return "בחר תוכנית";
+    }
+    else {
+        return "Please choose a plan";
+    }
+}
+
+function lang_start() {
+    if (lang == "he") {
+        return "התחל";
+    }
+    else {
+        return "Start";
+    }
+}
+
+function lang_info() {
+    if (lang == "he") {
+        return '<h1>SpeakApp! is part of an online free stuttering treatment course.</h1><br>\
+        The course videos channel: <a href="https://www.youtube.com/channel/UCIc2DJ_mozieycLCaNSGn4A">https://www.youtube.com/channel/UCIc2DJ_mozieycLCaNSGn4A</a><br>\
+        Contact: <a mailto="SpeakAppCourse@gmail.com">SpeakAppCourse@gmail.com</a>';
+    }
+    else {
+        return '<h1>SpeakApp! is part of an online free stuttering treatment course.</h1><br>\
+        The course videos channel: <a href="https://www.youtube.com/channel/UCIc2DJ_mozieycLCaNSGn4A">https://www.youtube.com/channel/UCIc2DJ_mozieycLCaNSGn4A</a><br>\
+        Contact: <a mailto="SpeakAppCourse@gmail.com">SpeakAppCourse@gmail.com</a>';
+    }
+}
+
+function lang_tooFastRise() {
+    if (lang == "he") {
+        return "עליה מהירה מידי";
+    }
+    else {
+        return "Rise too fast";
+    }
+}
+
+function lang_startBtn_continue() {
+    if (lang == "he") {
+        return "המשך";
+    }
+    else {
+        return "Continue";
+    }
+}
+
+function lang_startBtn_pause() {
+    if (lang == "he") {
+        return "השהה";
+    }
+    else {
+        return "Pause";
+    }
+}
+
+function lang_cleanBtn() {
+    if (lang == "he") {
+        return "נקה";
+    }
+    else {
+        return "Clean";
+    }
+}
+
+function lang_homeBtn() {
+    if (lang == "he") {
+        return "מסך ראשי";
+    }
+    else {
+        return "Home";
+    }
+}
+
+
+function updateLang() {
+    $("#choose_plan_txt").text(lang_choosePlan());
+    $("#input_submit").prop('value', lang_start());
+    $("#about").html(lang_info());
+    $("#bar_play_stop_btn").text(lang_startBtn_pause());
+    $("#bar_play_stop_btn").text(lang_startBtn_pause());
+    $("#bar_clean_btn").text(lang_cleanBtn());
+    $("#bar_home_btn").text(lang_homeBtn());
+}
 
 $("#plan1").addClass("selected_plan");
+
+$("#he_lang").click(function () {
+    lang = "he";
+    updateLang();
+});
+
+$("#en_lang").click(function () {
+    lang = "en";
+    updateLang()
+});
+
+var infoShows = false;
+$("#info").click(function () {
+    if (infoShows) {
+        $("#form_wrapper").show();
+        $("#about").hide();
+        infoShows = false;
+    }
+    else {
+        $("#form_wrapper").hide();
+        $("#about").show();
+        infoShows = true;
+    }
+});
 
 $("#plan1").click(function () {
     chosen_plan = 1;
@@ -43,6 +155,8 @@ $("#input_submit").click(function () {
     $("#main_canvas").show();
     $(".bar_btn").show();
     $("#logo").hide();
+    $("#langs").hide();
+    $("#info").hide();
 
     if (window.matchMedia("only screen and (max-width: 760px)").matches) {
         document.body.requestFullscreen();
@@ -56,13 +170,13 @@ var play_stop = function () {
         $("#bar_plus_btn").removeClass("bar_disabled_btn");
         $("#bar_minus_btn").removeClass("bar_disabled_btn");
         $("#bar_clean_btn").removeClass("bar_disabled_btn");
-        $("#bar_play_stop_btn").text("Stop");
+        $("#bar_play_stop_btn").text(lang_startBtn_pause());
     }
     else {
         $("#bar_plus_btn").addClass("bar_disabled_btn");
         $("#bar_minus_btn").addClass("bar_disabled_btn");
         $("#bar_clean_btn").addClass("bar_disabled_btn");
-        $("#bar_play_stop_btn").text("Play");
+        $("#bar_play_stop_btn").text(lang_startBtn_continue());
     }
 
     stopped = !stopped;
@@ -105,15 +219,17 @@ $("#bar_clean_btn").click(function () {
     totalSamples = 0;
 });
 
+$("#bar_home_btn").click(function() {
+    location.reload();
+});
+
 var boardArray = new Array();
 var boardArray2 = new Array();
 var boardArray3 = new Array();
+var boardArray4 = new Array();
 var totalSamples = 0;
 var stopped = false;
 var largeInPixel = 1;
-var lastSampleSum = 0;
-var latencyWarningCount = 0;
-var lastLatencyWarningZero = performance.now();
 
 var start_amp = function () {
     'use strict';
@@ -155,42 +271,34 @@ var start_amp = function () {
 
         analyser3.smoothingTimeConstant = 0;
         analyser3.fftSize = 1024;
+        //4
+        var audioContext4 = new AudioContext({
+            latencyHint: "interactive",
+            sampleRate: 60000
+        });
+        var audioStream4 = audioContext4.createMediaStreamSource(stream);
+        var analyser4 = audioContext4.createAnalyser();
+
+        audioStream4.connect(analyser4);
+
+        analyser4.smoothingTimeConstant = 0;
+        analyser4.fftSize = 1024;
 
         var frequencyArray = new Uint8Array(analyser.frequencyBinCount);
         var frequencyArray2 = new Uint8Array(analyser2.frequencyBinCount);
         var frequencyArray3 = new Uint8Array(analyser3.frequencyBinCount);
+        var frequencyArray4 = new Uint8Array(analyser4.frequencyBinCount);
 
         var doDraw = function () {
             requestAnimationFrame(doDraw);
             analyser.getByteTimeDomainData(frequencyArray);
             analyser2.getByteTimeDomainData(frequencyArray2);
             analyser3.getByteTimeDomainData(frequencyArray3);
+            analyser4.getByteTimeDomainData(frequencyArray4);
 
             if (stopped) {
                 return;
             }
-
-            // Mute mic warning
-            var allmute = true;
-            for (var i = 0; i < frequencyArray.length; i++) {
-                if (128 != frequencyArray[i] && 127 != frequencyArray[i]) {
-                    allmute = false;
-                    break;
-                }
-            }
-
-            // Latency warning
-            var currentSampleSum = frequencyArray.reduce((a, b) => a + b, 0);
-            if (!allmute && currentSampleSum == lastSampleSum) {
-                if (performance.now() - lastLatencyWarningZero > 5000) {
-                    latencyWarningCount = 1;
-                    lastLatencyWarningZero = performance.now();
-                }
-                else {
-                    latencyWarningCount += 1;
-                }
-            }
-            lastSampleSum = currentSampleSum;
 
             // Find max element in sample array
             var max = 0;
@@ -214,7 +322,14 @@ var start_amp = function () {
                 }
             }
 
-            boardArray.push((max + max2 + max3) / 3);
+            var max4 = 0;
+            for (var i = 0; i < frequencyArray4.length; i++) {
+                if (max4 < frequencyArray4[i]) {
+                    max4 = frequencyArray4[i];
+                }
+            }
+
+            boardArray.push((max + max2 + max3 + max4) / 4);
 
             if (boardArray.length * (largeInPixel + 1) >= document.body.clientWidth * 0.7) {
                 var prv_size = boardArray.length;
@@ -243,7 +358,6 @@ const dataToCanvas = filteredData => {
 
     for (let i = 0; i < filteredData.length; i++) {
         var pre = (filteredData[i] - 127) / 128;
-        //pre = filteredData[i] / 255;
 
         newData.push(document.body.clientHeight - pre * document.body.clientHeight);
     }
@@ -270,36 +384,27 @@ const draw = normalizedData => {
     ctx.moveTo(0, newData[0]);
 
     var lastPoint = [0, newData[0]];
-    var redLine = false;
-    var blueLine = false;
-    var endOfBlueLine = 0;
-    var ClimbeTooFastMaxValue = 0;
-
+    var lastComment = -1;
     for (let i = 0; i < newData.length; i++) {
-        // Check sample error
-        if (normalizedData[i] >= 130 && i + 1 < newData.length && normalizedData[i] == normalizedData[i + 1]) {
-            //continue;
-        }
-
         // Check red
-        if (false && !redLine && normalizedData[i] < 130 && i + 9 < normalizedData.length) {
+        if (normalizedData[i] < 130 && i + 9 < normalizedData.length) {
             var total = 0;
             for (var j = i; j < i + 10; j++) {
                 total += normalizedData[j] - 127;
             }
             var avg = total / 10;
             if (avg > 8) {
-                ctx.stroke();
-                ctx.beginPath();
-                ctx.moveTo(lastPoint[0], lastPoint[1]);
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = "red";
-                redLine = true;
+                if (lastComment == -1 || i - lastComment > 50) {
+                    ctx.font = "15px Palatino Linotype Sans MS";
+                    ctx.fillStyle = "white";
+                    ctx.fillText(lang_tooFastRise(), lastPoint[0], canvas.height / 3);
+                    lastComment = i;
+                }
             }
         }
 
         // Check blue
-        if (!blueLine && normalizedData[i] < 130 && i + 9 < normalizedData.length && normalizedData[i + 9] > 130) {
+        if (false && normalizedData[i] < 130 && i + 9 < normalizedData.length && normalizedData[i + 9] > 130) {
             var endOfMountain = i;
             var maxOfMountain = normalizedData[i];
             var isMountain = false;
@@ -331,11 +436,6 @@ const draw = normalizedData => {
         }
 
         ctx.lineTo(i + largeInPixel * i, newData[i]);
-
-        //ctx.font = "10px Palatino Linotype Sans MS";
-        //ctx.fillStyle = "white";
-        //ctx.fillText(i, i + largeInPixel * i, newData[i]);
-
         lastPoint = [i + largeInPixel * i, newData[i]];
 
         if (largeInPixel != 0 && (i + 1) < newData.length) {
@@ -348,24 +448,7 @@ const draw = normalizedData => {
             }
         }
 
-        if (redLine) {
-            if (ClimbeTooFastMaxValue < normalizedData[i]) {
-                ClimbeTooFastMaxValue = normalizedData[i];
-            }
-
-            if (normalizedData[i] > 160 || normalizedData[i] + 5 < ClimbeTooFastMaxValue || normalizedData[i] < 128) {
-                redLine = 0;
-                ClimbeTooFastMaxValue = 0;
-
-                ctx.stroke();
-                ctx.beginPath();
-                ctx.moveTo(lastPoint[0], lastPoint[1]);
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = "#65b042";
-            }
-        }
-
-        if (blueLine) {
+        if (false) {
             if (i == endOfBlueLine) {
                 ctx.stroke();
                 ctx.beginPath();
@@ -396,13 +479,4 @@ const draw = normalizedData => {
     ctx.fillStyle = "white";
     ctx.globalAlpha = 0.2;
     ctx.fillText("SpeakApp!", 10, 30);
-
-    // High microphone latency warning
-    if (latencyWarningCount > 50) {
-        ctx.font = "20px Palatino Linotype Sans MS";
-        ctx.fillStyle = "Yellow";
-        ctx.globalAlpha = 1;
-        ctx.textAlign = "center";
-        ctx.fillText("Warning: Your device have high latency", canvas.width / 2, 30);
-    }
 };

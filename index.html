@@ -22,40 +22,51 @@
   <link href="https://fonts.googleapis.com/css?family=Roboto:300,400" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+  <link rel="icon" href="res/2waves.png">
+  <link href="https://fonts.googleapis.com/css?family=Alef&display=swap" rel="stylesheet">
 </head>
 
 <body>
   <div class="flex">
     <div class="take_all" id="logo_place">
-      <label id="bar_play_stop_btn" class="bar_btn center_content">Stop</label>
-      <label id="bar_clean_btn" class="bar_btn center_content">Clean</label>
+      <img src="res/info.png" id="info" width="30" />
+      <label id="bar_play_stop_btn" class="bar_btn center_content">השהה</label>
+      <label id="bar_clean_btn" class="bar_btn center_content">נקה</label>
       <h1 id="logo">SpeakApp!</h1>
       <label id="bar_plus_btn" class="bar_btn center_content">+</label>
       <label id="bar_minus_btn" class="bar_btn center_content">-</label>
+      <label id="bar_home_btn" class="bar_btn center_content">מסך ראשי</label>
+      <div id="langs">
+        <img src="res/he.svg" id="he_lang" width="30" />
+        <img src="res/en.svg" id="en_lang" width="30" />
+      </div>
     </div>
-
     <div class="flex" id="form_wrapper">
-      <h1 class="take_all">Please choose a plan</h1>
+      <h1 id="choose_plan_txt" class="take_all">בחר תוכנית</h1>
       <div id="plan1" class="plan_btn center_content">
-        <img src="1wave.png" width="100" />
+        <img src="res/1wave.png" width="100" />
         <!-- Single syllable -->
       </div>
       <div id="plan2" class="plan_btn center_content">
-        <img src="2waves.png" width="100" />
+        <img src="res/2waves.png" width="100" />
         <!-- Double syllables -->
       </div>
       <div id="plan4" class="plan_btn center_content">
-        <img src="4waves.png" width="100" />
+        <img src="res/4waves.png" width="100" />
         <!-- 4 syllables -->
       </div>
       <div id="plan_speak" class="plan_btn center_content">
-        <img src="auto.svg" width="100" />
+        <img src="res/auto.svg" width="100" />
         <!-- Flowing speech -->
       </div>
-      <input type="submit" value="Go!" id='input_submit' class='input_field'>
+      <input type="submit" value="התחל" id='input_submit' class='input_field'>
     </div>
-
     <canvas id="main_canvas"></canvas>
+    <div id="about">
+      <h1>SpeakApp! is part of an online free stuttering treatment course.</h1><br>
+      The course videos channel: <a href="https://www.youtube.com/channel/UCIc2DJ_mozieycLCaNSGn4A">https://www.youtube.com/channel/UCIc2DJ_mozieycLCaNSGn4A</a><br>
+      Contact: <a mailto="SpeakAppCourse@gmail.com">SpeakAppCourse@gmail.com</a>
+    </div>
   </div>
 
   <script src=".\script.js"></script>
