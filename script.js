@@ -21,13 +21,14 @@ function lang_start() {
 
 function lang_info() {
     if (lang == "he") {
-        return '<h1>SpeakApp! is part of an online free stuttering treatment course.</h1><br>\
-        The course videos channel: <a href="https://www.youtube.com/channel/UCIc2DJ_mozieycLCaNSGn4A">https://www.youtube.com/channel/UCIc2DJ_mozieycLCaNSGn4A</a><br>\
-        Contact: <a mailto="SpeakAppCourse@gmail.com">SpeakAppCourse@gmail.com</a>';
+        return '<h1>SpeakApp הוא חלק מקורס אונליין לטיפול בגמגום</h1><br>\
+        ערוץ הYouTube של הקורס: <a\
+          href="https://www.youtube.com/channel/UCIc2DJ_mozieycLCaNSGn4A">https://www.youtube.com/channel/UCIc2DJ_mozieycLCaNSGn4A</a><br>\
+        יצירת קשר: <a mailto="SpeakAppCourse@gmail.com">SpeakAppCourse@gmail.com</a>';
     }
     else {
         return '<h1>SpeakApp! is part of an online free stuttering treatment course.</h1><br>\
-        The course videos channel: <a href="https://www.youtube.com/channel/UCIc2DJ_mozieycLCaNSGn4A">https://www.youtube.com/channel/UCIc2DJ_mozieycLCaNSGn4A</a><br>\
+        The YouTube channel of the course: <a href="https://www.youtube.com/channel/UCIc2DJ_mozieycLCaNSGn4A">https://www.youtube.com/channel/UCIc2DJ_mozieycLCaNSGn4A</a><br>\
         Contact: <a mailto="SpeakAppCourse@gmail.com">SpeakAppCourse@gmail.com</a>';
     }
 }
@@ -70,7 +71,7 @@ function lang_cleanBtn() {
 
 function lang_homeBtn() {
     if (lang == "he") {
-        return "מסך ראשי";
+        return "בית";
     }
     else {
         return "Home";
@@ -81,27 +82,30 @@ function lang_homeBtn() {
 function updateLang() {
     $("#choose_plan_txt").text(lang_choosePlan());
     $("#input_submit").prop('value', lang_start());
-    $("#about").html(lang_info());
+    $("#about_txt").html(lang_info());
     $("#bar_play_stop_btn").text(lang_startBtn_pause());
     $("#bar_play_stop_btn").text(lang_startBtn_pause());
     $("#bar_clean_btn").text(lang_cleanBtn());
     $("#bar_home_btn").text(lang_homeBtn());
 }
+updateLang();
 
 $("#plan1").addClass("selected_plan");
 
 $("#he_lang").click(function () {
     lang = "he";
+    $("#about_txt").css("direction", "rtl");
     updateLang();
 });
 
 $("#en_lang").click(function () {
     lang = "en";
+    $("#about_txt").css("direction", "ltr");
     updateLang()
 });
 
 var infoShows = false;
-$("#info").click(function () {
+function close_open_info() {
     if (infoShows) {
         $("#form_wrapper").show();
         $("#about").hide();
@@ -112,7 +116,10 @@ $("#info").click(function () {
         $("#about").show();
         infoShows = true;
     }
-});
+}
+
+$("#info").click(close_open_info);
+$("#close_info").click(close_open_info);
 
 $("#plan1").click(function () {
     chosen_plan = 1;
@@ -159,7 +166,7 @@ $("#input_submit").click(function () {
     $("#info").hide();
 
     if (window.matchMedia("only screen and (max-width: 760px)").matches) {
-        document.body.requestFullscreen();
+        //document.body.requestFullscreen();
     }
 
     start_amp();
@@ -219,7 +226,7 @@ $("#bar_clean_btn").click(function () {
     totalSamples = 0;
 });
 
-$("#bar_home_btn").click(function() {
+$("#bar_home_btn").click(function () {
     location.reload();
 });
 
@@ -365,6 +372,79 @@ const dataToCanvas = filteredData => {
     return newData;
 }
 
+function getAllMountains(samplesVector) {
+    var mountains = [];
+    for (let i = 0; i < samplesVector.length; i++) {
+
+        // Start of mountain
+        if (samplesVector[i] > 130) {
+            var endOfMountain = i;
+            for (let j = i; j < samplesVector.length; j++) {
+                if (samplesVector[j] <= 130) {
+                    endOfMountain = j;
+                    break;
+                }
+            }
+
+            // The mountain didn't end yet
+            if (endOfMountain == i) {
+                endOfMountain = samplesVector.length;
+            }
+
+            mountains.push({ 'start': i, 'end': endOfMountain });
+
+            i = endOfMountain;
+        }
+    }
+
+    return mountains;
+}
+
+function getCurrentMountain(mountains, i) {
+    for (let j = 0; j < mountains.length; j++) {
+        if (mountains[j].start <= i && mountains[j].end > i) {
+            return mountains[j];
+        }
+    }
+    return null;
+}
+
+function writeMessage(ctx, canvasHeight, lastHeightUsage, lastPoint, i, msg) {
+    var msgHeight = -1;
+    for (let j = 0; j < lastHeightUsage.length; j++) {
+        if (lastHeightUsage[j] < i) {
+            msgHeight = j;
+            break;
+        }
+    }
+
+    if (msgHeight == -1) {
+        lastHeightUsage.push(0);
+        msgHeight = lastHeightUsage.length - 1;
+    }
+
+    ctx.font = "15px Palatino Linotype Sans MS";
+    ctx.fillStyle = "white";
+    ctx.fillText(msg, i, canvasHeight / 4 + 20 * msgHeight);
+
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "#fff";
+    ctx.moveTo(i, canvasHeight / 4 + 20 * msgHeight);
+    ctx.lineTo(i, lastPoint[1]);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "#65b042";
+
+    ctx.moveTo(lastPoint[0], lastPoint[1]);
+
+    lastHeightUsage[msgHeight] = i + msg.toString().length * 8;
+}
+
 const draw = normalizedData => {
     // set up the canvas
     const canvas = document.querySelector("canvas");
@@ -375,6 +455,7 @@ const draw = normalizedData => {
     const ctx = canvas.getContext("2d");
 
     //normalizedData --> 128 - 255
+    mountains = getAllMountains(normalizedData);
     newData = dataToCanvas(normalizedData);
 
     ctx.beginPath();
@@ -384,10 +465,10 @@ const draw = normalizedData => {
     ctx.moveTo(0, newData[0]);
 
     var lastPoint = [0, newData[0]];
-    var lastComment = -1;
+    var lastHeightUsage = [];
     for (let i = 0; i < newData.length; i++) {
         // Check red
-        if (normalizedData[i] < 130 && i + 9 < normalizedData.length) {
+        if (false && normalizedData[i] < 130 && i + 9 < normalizedData.length) {
             var total = 0;
             for (var j = i; j < i + 10; j++) {
                 total += normalizedData[j] - 127;
@@ -398,41 +479,19 @@ const draw = normalizedData => {
                     ctx.font = "15px Palatino Linotype Sans MS";
                     ctx.fillStyle = "white";
                     ctx.fillText(lang_tooFastRise(), lastPoint[0], canvas.height / 3);
-                    lastComment = i;
                 }
             }
         }
 
-        // Check blue
-        if (false && normalizedData[i] < 130 && i + 9 < normalizedData.length && normalizedData[i + 9] > 130) {
-            var endOfMountain = i;
-            var maxOfMountain = normalizedData[i];
-            var isMountain = false;
-            for (var j = i; j < normalizedData.length; j++) {
-                if (maxOfMountain < normalizedData[j]) {
-                    maxOfMountain = normalizedData[j];
-                }
-
-                if (normalizedData[j] > 140) {
-                    isMountain = true;
-                }
-
-                if (j > i + 9 && normalizedData[j] < 130) {
-                    endOfMountain = j;
-                    break;
-                }
+        var currentMountain = getCurrentMountain(mountains, i);
+        if (currentMountain != null) {
+            if (i == Math.round((currentMountain.end - currentMountain.start) / 2) + currentMountain.start) {
+                writeMessage(ctx, canvas.height, lastHeightUsage, lastPoint, lastPoint[0], "start:"+currentMountain.start+" end:"+currentMountain.end);
             }
+        }
 
-            if (isMountain && endOfBlueLine != i) {
-                ctx.stroke();
-                ctx.beginPath();
-                ctx.moveTo(lastPoint[0], lastPoint[1]);
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = "blue";
-                blueLine = true;
-                redLine = false;
-                endOfBlueLine = endOfMountain;
-            }
+        if (i == newData.length - 1) {
+            writeMessage(ctx, canvas.height, lastHeightUsage, lastPoint, i + largeInPixel * i, normalizedData[i]);
         }
 
         ctx.lineTo(i + largeInPixel * i, newData[i]);
@@ -445,19 +504,6 @@ const draw = normalizedData => {
             for (let j = 0; j < largeInPixel; j++) {
                 ctx.lineTo(i + largeInPixel * i + j + 1, newData[i] + (each_diff * j));
                 lastPoint = [i + largeInPixel * i + j + 1, newData[i] + (each_diff * j)];
-            }
-        }
-
-        if (false) {
-            if (i == endOfBlueLine) {
-                ctx.stroke();
-                ctx.beginPath();
-                ctx.moveTo(lastPoint[0], lastPoint[1]);
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = "#65b042";
-
-                blueLine = false;
-                endOfBlueLine = 0;
             }
         }
     }
