@@ -21,7 +21,7 @@ function lang_start() {
 
 function lang_info() {
     if (lang == "he") {
-        return '<h1>SpeakApp הוא חלק מקורס אונליין לטיפול בגמגום</h1><br>\
+        return '<h1>SpeakApp הוא חלק מקורס אונליין חינמי לטיפול בגמגום</h1><br>\
         ערוץ הYouTube של הקורס: <a\
           href="https://www.youtube.com/channel/UCIc2DJ_mozieycLCaNSGn4A">https://www.youtube.com/channel/UCIc2DJ_mozieycLCaNSGn4A</a><br>\
         יצירת קשר: <a mailto="SpeakAppCourse@gmail.com">SpeakAppCourse@gmail.com</a>';
@@ -157,7 +157,10 @@ $("#plan_speak").click(function () {
     $("#plan_speak").addClass("selected_plan");
 });
 
-$("#input_submit").click(function () {
+var isStartedAmp = false;
+function startAmp() {
+    isStartedAmp = true;
+
     $("#form_wrapper").hide();
     $("#main_canvas").show();
     $(".bar_btn").show();
@@ -170,19 +173,15 @@ $("#input_submit").click(function () {
     }
 
     start_amp();
-});
+}
+
+$("#input_submit").click(startAmp);
 
 var play_stop = function () {
     if (stopped == true) {
-        $("#bar_plus_btn").removeClass("bar_disabled_btn");
-        $("#bar_minus_btn").removeClass("bar_disabled_btn");
-        $("#bar_clean_btn").removeClass("bar_disabled_btn");
         $("#bar_play_stop_btn").text(lang_startBtn_pause());
     }
     else {
-        $("#bar_plus_btn").addClass("bar_disabled_btn");
-        $("#bar_minus_btn").addClass("bar_disabled_btn");
-        $("#bar_clean_btn").addClass("bar_disabled_btn");
         $("#bar_play_stop_btn").text(lang_startBtn_continue());
     }
 
@@ -193,41 +192,59 @@ $("#bar_play_stop_btn").click(play_stop);
 $("#main_canvas").click(play_stop);
 document.body.onkeyup = function (e) {
     if (e.keyCode == 32) {
-        play_stop();
+        if (isStartedAmp) {
+            play_stop();
+        }
+        else {
+            startAmp();
+        }
+    }
+    else if (e.keyCode == 67) {
+        if (isStartedAmp) {
+            cleanScrean();
+        }
     }
 }
 
 $("#bar_plus_btn").click(function () {
-    if (stopped == true) {
-        return;
-    }
-
     if (largeInPixel < 4) {
         largeInPixel += 1;
+    }
+
+    if (stopped == true) {
+        enableOnce = true;
     }
 });
 
 $("#bar_minus_btn").click(function () {
-    if (stopped == true) {
-        return;
-    }
-
     if (largeInPixel > 0) {
         largeInPixel -= 1;
     }
+
+    if (stopped == true) {
+        enableOnce = true;
+    }
 });
 
-$("#bar_clean_btn").click(function () {
-    if (stopped == true) {
-        return;
-    }
-
+function cleanScrean() {
     boardArray = new Array();
     totalSamples = 0;
-});
+
+    if (stopped == true) {
+        enableOnce = true;
+    }
+}
+
+$("#bar_clean_btn").click(cleanScrean);
 
 $("#bar_home_btn").click(function () {
     location.reload();
+});
+
+window.addEventListener("resize", function () {
+    if (stopped == true) {
+        enableOnce = true;
+    }
 });
 
 var boardArray = new Array();
@@ -236,6 +253,7 @@ var boardArray3 = new Array();
 var boardArray4 = new Array();
 var totalSamples = 0;
 var stopped = false;
+var enableOnce = false;
 var largeInPixel = 1;
 
 var start_amp = function () {
@@ -304,7 +322,12 @@ var start_amp = function () {
             analyser4.getByteTimeDomainData(frequencyArray4);
 
             if (stopped) {
-                return;
+                if (!enableOnce) {
+                    return;
+                }
+                else {
+                    enableOnce = false;
+                }
             }
 
             // Find max element in sample array
@@ -372,10 +395,30 @@ const dataToCanvas = filteredData => {
     return newData;
 }
 
+function getExtremeOfVectorScope(vec, startI, endI, findMax) {
+    if (endI > vec.length) {
+        return null;
+    }
+
+    var extremeValue = vec[startI];
+    var extremeI = startI;
+    for (let i = startI; i < endI && i < vec.length; i++) {
+        if (findMax && vec[i] > extremeValue) {
+            extremeValue = vec[i];
+            extremeI = i;
+        }
+        else if (!findMax && vec[i] < extremeValue) {
+            extremeValue = vec[i];
+            extremeI = i;
+        }
+    }
+
+    return [extremeI, extremeValue];
+}
+
 function getAllMountains(samplesVector) {
     var mountains = [];
     for (let i = 0; i < samplesVector.length; i++) {
-
         // Start of mountain
         if (samplesVector[i] > 130) {
             var endOfMountain = i;
@@ -388,16 +431,171 @@ function getAllMountains(samplesVector) {
 
             // The mountain didn't end yet
             if (endOfMountain == i) {
-                endOfMountain = samplesVector.length;
+                //endOfMountain = samplesVector.length;
+                continue;
             }
 
-            mountains.push({ 'start': i, 'end': endOfMountain });
+            var currentMountain = {
+                'start': i,
+                'end': endOfMountain,
+                'length': endOfMountain - i
+            };
+
+            mountains.push(currentMountain);
 
             i = endOfMountain;
         }
     }
 
-    return mountains;
+    for (let i = 0; i < mountains.length; i++) {
+        var totalHeight = 0;
+        var totalUps = 0;
+        var totalDowns = 0;
+        for (let j = mountains[i].start; j < mountains[i].end; j++) {
+            totalHeight += samplesVector[j] - 128;
+
+            if (j > mountains[i].start) {
+                if (samplesVector[j] > samplesVector[j - 1]) {
+                    totalUps += samplesVector[j] - samplesVector[j - 1];
+                }
+                else if (samplesVector[j] < samplesVector[j - 1]) {
+                    totalDowns += samplesVector[j - 1] - samplesVector[j];
+                }
+            }
+        }
+
+        mountains[i].avgHeight = Math.round(totalHeight / mountains[i].length);
+        mountains[i].avgUps = Math.round(totalUps / mountains[i].length);
+        mountains[i].avgDowns = Math.round(totalDowns / mountains[i].length);
+
+        mountains[i].balance = [];
+        for (let j = mountains[i].start; j < mountains[i].end; j += 10) {
+            var total = 0;
+            for (let k = j; k < j + 10 && k < mountains[i].end - 1; k++) {
+                total += samplesVector[k + 1] - samplesVector[k];
+            }
+
+            mountains[i].balance.push(Math.round(total));
+        }
+
+        mountains[i].extremes = [];
+
+        var directionUp = true;
+        var startSearchArea = 0;
+        for (let j = 0; j < mountains[i].balance.length; j++) {
+            if (mountains[i].balance[j] < -5) {
+                if (!directionUp) {
+                    startSearchArea = j;
+                }
+
+                if (directionUp) {
+                    var endSearch = mountains[i].start + (j + 1) * 10;
+                    if (endSearch > mountains[i].end) {
+                        endSearch = mountains[i].end;
+                    }
+                    var m = getExtremeOfVectorScope(samplesVector, mountains[i].start + startSearchArea * 10, endSearch, true);
+                    if (m != null) {
+                        mountains[i].extremes.push(m);
+                    }
+                    startSearchArea = j + 1;
+                    directionUp = false;
+                }
+            }
+            else if (mountains[i].balance[j] > 5) {
+                if (directionUp) {
+                    startSearchArea = j;
+                }
+
+                if (!directionUp) {
+                    var endSearch = mountains[i].start + (j + 1) * 10;
+                    if (endSearch > mountains[i].end) {
+                        endSearch = mountains[i].end;
+                    }
+                    var m = getExtremeOfVectorScope(samplesVector, mountains[i].start + startSearchArea * 10, endSearch, false);
+                    if (m != null) {
+                        mountains[i].extremes.push(m);
+                    }
+                    startSearchArea = j + 1;
+                    directionUp = true;
+                }
+            }
+        }
+
+        // Calculate period
+        mountains[i].period = [];
+        var mStart = mountains[i].start;
+        for (let j = 0; j < mountains[i].extremes.length; j++) {
+            if (j % 2 == 0) {
+                continue;
+            }
+
+            mountains[i].period.push(Math.round((mountains[i].extremes[j][0] - mStart) * 100 / 60) / 100);
+            mStart = mountains[i].extremes[j][0];
+        }
+        mountains[i].period.push(Math.round((mountains[i].end - mStart) * 100 / 60) / 100);
+    }
+
+    var relevantMountains = [];
+    for (let i = 0; i < mountains.length; i++) {
+        if (mountains[i].length < 13) {
+            continue;
+        }
+
+        var foundLoudExtreme = false;
+        var foundCorruptedMinMax = false;
+        for (let j = 0; j < mountains[i].extremes.length; j++) {
+            if (mountains[i].extremes[j][1] > 140) {
+                foundLoudExtreme = true;
+            }
+
+            if (j % 2 != 0 && j > 0) {
+                if (mountains[i].extremes[j][1] > mountains[i].extremes[j - 1][1]) {
+                    foundCorruptedMinMax = true;
+                }
+            }
+        }
+        if (foundCorruptedMinMax) {
+            continue;
+        }
+
+        if (!foundLoudExtreme) {
+            continue; // pass and mark as corrupted
+        }
+
+        if (mountains[i].avgUps > 5) {
+            continue; // pass and mark as corrupted
+        }
+
+        // pass if extremes not max-min-max-mim
+
+        // pass if min extreme too high
+
+        if (mountains[i].avgHeight < 7) {
+            continue;
+        }
+
+        if (mountains[i].end == samplesVector.length) {
+            continue;
+        }
+
+        if (mountains[i].start == 0) {
+            continue;
+        }
+
+        relevantMountains.push(mountains[i]);
+    }
+
+    for (let i = 0; i < relevantMountains.length; i++) {
+        if (i > 0) {
+            var t = (relevantMountains[i].start - relevantMountains[i - 1].end) / 60;
+            relevantMountains[i].timeSincePrev = Math.round(t * 100) / 100;
+        }
+        else {
+            relevantMountains[i].timeSincePrev = 5;
+        }
+    }
+
+    return relevantMountains;
 }
 
 function getCurrentMountain(mountains, i) {
@@ -431,7 +629,7 @@ function writeMessage(ctx, canvasHeight, lastHeightUsage, lastPoint, i, msg) {
 
     ctx.beginPath();
     ctx.lineWidth = 1;
-    ctx.strokeStyle = "#fff";
+    ctx.strokeStyle = "red";
     ctx.moveTo(i, canvasHeight / 4 + 20 * msgHeight);
     ctx.lineTo(i, lastPoint[1]);
     ctx.stroke();
@@ -486,12 +684,16 @@ const draw = normalizedData => {
         var currentMountain = getCurrentMountain(mountains, i);
         if (currentMountain != null) {
             if (i == Math.round((currentMountain.end - currentMountain.start) / 2) + currentMountain.start) {
-                writeMessage(ctx, canvas.height, lastHeightUsage, lastPoint, lastPoint[0], "start:"+currentMountain.start+" end:"+currentMountain.end);
+                writeMessage(ctx, canvas.height, lastHeightUsage, lastPoint, lastPoint[0],
+                    "length:" + currentMountain.length + " avgHeight:" + currentMountain.avgHeight +
+                    " avgUps:" + currentMountain.avgUps + " avgDowns:" + currentMountain.avgDowns +
+                    " balance:" + currentMountain.balance + " extremes:" + currentMountain.extremes +
+                    " timeSincePrev:" + currentMountain.timeSincePrev + " period:" + currentMountain.period);
             }
         }
 
         if (i == newData.length - 1) {
-            writeMessage(ctx, canvas.height, lastHeightUsage, lastPoint, i + largeInPixel * i, normalizedData[i]);
+            writeMessage(ctx, canvas.height, lastHeightUsage, lastPoint, i + largeInPixel * i, normalizedData[i] + "," + i);
         }
 
         ctx.lineTo(i + largeInPixel * i, newData[i]);
