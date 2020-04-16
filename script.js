@@ -424,8 +424,19 @@ function getAllMountains(samplesVector) {
             var endOfMountain = i;
             for (let j = i; j < samplesVector.length; j++) {
                 if (samplesVector[j] <= 130) {
-                    endOfMountain = j;
-                    break;
+                    // Before determine it is end, check x forward
+                    var foundNearMountain = false;
+                    for (let z = j; z < samplesVector.length && z < j + 20; z++) {
+                        if (samplesVector[z] > 130) {
+                            foundNearMountain = true;
+                            break;
+                        }
+                    }
+
+                    if (!foundNearMountain) {
+                        endOfMountain = j;
+                        break;
+                    }
                 }
             }
 
@@ -541,13 +552,9 @@ function getAllMountains(samplesVector) {
             continue;
         }
 
-        var foundLoudExtreme = false;
+        // Clean mountains with bugs
         var foundCorruptedMinMax = false;
         for (let j = 0; j < mountains[i].extremes.length; j++) {
-            if (mountains[i].extremes[j][1] > 140) {
-                foundLoudExtreme = true;
-            }
-
             if (j % 2 != 0 && j > 0) {
                 if (mountains[i].extremes[j][1] > mountains[i].extremes[j - 1][1]) {
                     foundCorruptedMinMax = true;
@@ -558,17 +565,55 @@ function getAllMountains(samplesVector) {
             continue;
         }
 
+        // Iterate all mountains
+        var foundLoudExtreme = false;
+        var minExtremeTooHigh = false;
+        var tooFastRiseAt = [];
+        for (let j = 0; j < mountains[i].extremes.length; j++) {
+            if (mountains[i].extremes[j][1] > 140) {
+                foundLoudExtreme = true;
+            }
+
+            if (j % 2 != 0) { // It is a min point
+                // The transfom between the mountain was too high
+                if (mountains[i].extremes[j][1] > 140) {
+                    minExtremeTooHigh = true;
+                }
+            }
+            else { // It is a max point
+                // Rise too fase
+                var slope = 0;
+                if (j == 0) {
+                    slope = (mountains[i].start - mountains[i].extremes[j][0]) / (128 - mountains[i].extremes[j][1]);
+                }
+                else {
+                    slope = (mountains[i].extremes[j - 1][0] - mountains[i].extremes[j][0]) / (mountains[i].extremes[j - 1][1] - mountains[i].extremes[j][1]);
+                }
+                if (slope < (mountains[i].period[j / 2] / 0.5) * 0.2) {
+                    tooFastRiseAt.push(j);
+                }
+            }
+        }
+
         if (!foundLoudExtreme) {
-            continue; // pass and mark as corrupted
+            mountains[i].warn = true;
+            mountains[i].tooLow = true;
         }
 
         if (mountains[i].avgUps > 5) {
-            continue; // pass and mark as corrupted
+            mountains[i].warn = true;
+            mountains[i].noises = true;
         }
 
-        // pass if extremes not max-min-max-mim
+        if (minExtremeTooHigh) {
+            mountains[i].advice = true;
+            mountains[i].minExtremeTooHigh = true;
+        }
 
-        // pass if min extreme too high
+        if (tooFastRiseAt.length > 0) {
+            mountains[i].advice = true;
+            mountains[i].riseTooFast = tooFastRiseAt;
+        }
 
         if (mountains[i].avgHeight < 7) {
             continue;
@@ -681,22 +726,40 @@ const draw = normalizedData => {
             }
         }
 
+        ctx.lineTo(i + largeInPixel * i, newData[i]);
+
         var currentMountain = getCurrentMountain(mountains, i);
         if (currentMountain != null) {
             if (i == Math.round((currentMountain.end - currentMountain.start) / 2) + currentMountain.start) {
-                writeMessage(ctx, canvas.height, lastHeightUsage, lastPoint, lastPoint[0],
-                    "length:" + currentMountain.length + " avgHeight:" + currentMountain.avgHeight +
+                if (currentMountain.warn) {
+                    if (currentMountain.noises) {
+                        writeMessage(ctx, canvas.height, lastHeightUsage, lastPoint, lastPoint[0], "Warn: Noises");
+                    }
+                    else if (currentMountain.tooLow) {
+                        writeMessage(ctx, canvas.height, lastHeightUsage, lastPoint, lastPoint[0], "Warn: Too Low");
+                    }
+                }
+                else if (currentMountain.advice) {
+                    if (currentMountain.riseTooFast && currentMountain.riseTooFast.length > 0) {
+                        writeMessage(ctx, canvas.height, lastHeightUsage, lastPoint, lastPoint[0], "Advice: Rice too fast at: " + currentMountain.riseTooFast);
+                    }
+                    else if (currentMountain.minExtremeTooHigh) {
+                        writeMessage(ctx, canvas.height, lastHeightUsage, lastPoint, lastPoint[0], "Advice: The transition between syllables is too high");
+                    }
+                }
+                /*writeMessage(ctx, canvas.height, lastHeightUsage, lastPoint, lastPoint[0],
+                    "start:" + currentMountain.start + " end:" + currentMountain.end +
                     " avgUps:" + currentMountain.avgUps + " avgDowns:" + currentMountain.avgDowns +
                     " balance:" + currentMountain.balance + " extremes:" + currentMountain.extremes +
-                    " timeSincePrev:" + currentMountain.timeSincePrev + " period:" + currentMountain.period);
+                    " timeSincePrev:" + currentMountain.timeSincePrev + " period:" + currentMountain.period);*/
+                writeMessage(ctx, canvas.height, lastHeightUsage, lastPoint, lastPoint[0], currentMountain.period + "sec");
             }
         }
 
         if (i == newData.length - 1) {
-            writeMessage(ctx, canvas.height, lastHeightUsage, lastPoint, i + largeInPixel * i, normalizedData[i] + "," + i);
+            writeMessage(ctx, canvas.height, lastHeightUsage, lastPoint, i + largeInPixel * i, "");
         }
 
-        ctx.lineTo(i + largeInPixel * i, newData[i]);
         lastPoint = [i + largeInPixel * i, newData[i]];
 
         if (largeInPixel != 0 && (i + 1) < newData.length) {
@@ -710,6 +773,33 @@ const draw = normalizedData => {
         }
     }
     ctx.stroke();
+
+    // draw desired start
+    ctx.beginPath();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "red";
+    for (let i = 0; i < mountains.length; i++) {
+        if (mountains[i].warn) {
+            continue;
+        }
+
+        ctx.moveTo(mountains[i].start * (largeInPixel + 1), canvas.height);
+
+        for (let j = 0; j < mountains[i].extremes.length; j++) {
+            var pre = (mountains[i].extremes[j][1] - 127) / 128;
+            ctx.lineTo(mountains[i].extremes[j][0] * (largeInPixel + 1), document.body.clientHeight - pre * document.body.clientHeight);
+        }
+        ctx.lineTo(mountains[i].end * (largeInPixel + 1), canvas.height);
+
+        //for (let j = 0; j < 100; j++) {
+        //   var t = 0.1 * j * j * j;
+        //   ctx.lineTo((mountains[i].start + j) * (largeInPixel + 1), canvas.height - t);
+        //}
+
+        //ctx.moveTo(mountains[i].end * (largeInPixel + 1), canvas.height);
+        //ctx.lineTo(mountains[i].extremes[1] * (largeInPixel + 1), mountains[i].extremes[0]);
+    }
+    //ctx.stroke();
 
     ctx.beginPath();
     ctx.lineWidth = 0.5;
